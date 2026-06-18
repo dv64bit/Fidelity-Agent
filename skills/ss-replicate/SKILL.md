@@ -1,112 +1,97 @@
 ---
-name: ss-replicate
-description: Replicate a UI from a screenshot, reference image, or design mock into working code with maximum visual fidelity. Use this whenever the user provides a UI image and wants it rebuilt, cloned, copied, or reproduced "exactly" / "pixel-perfect" / "1:1" / "as-is" — including dashboards, landing pages, mobile screens, components, side sheets, modals, tables, and forms. Triggers on "clone this screen", "replicate this UI", "build this from the screenshot", "match this design exactly", "recreate this", or the /ss-replicate command. This is a REPLICATION skill (reproduce what is shown), not a design skill (do not improve, redesign, or add). Prefer this over freehand coding any time visual fidelity to a reference image is the goal.
+name: extract-design-language
+description: Extract the complete design language from a reference — a screenshot/image, a live URL/website, or an existing codebase — into a structured, reusable design-language brief (tokens + patterns + rationale). Use whenever the user wants to "extract the design language", "capture the design system", "reverse-engineer this UI's styling", "figure out the tokens behind this", "document how this looks", or analyse what makes a reference look the way it does, from any source. Triggers on the /extract-design-language command and on any request to derive design intent, tokens, or patterns from an image, site, or code. Use this when the goal is to UNDERSTAND and capture a design language for reuse; if the goal is specifically to emit a spec-compliant DESIGN.md file from a codebase, use export-designmd instead (it builds on this analysis).
 ---
 
-# UI Replication (ss-replicate)
+# Extract Design Language
 
-Reproduce a reference UI as faithfully as the medium allows. The single most common failure mode is not "the model can't code the UI" — it is **drift**: the corner radius lands at 10px instead of 12px, the weight reads semibold instead of medium, the shadow is one elevation step too heavy, the spacing breathes 4px too much. This skill exists to eliminate drift through a disciplined process, not optimism.
+Capture the *design language* of a reference — not just a list of colors, but the system of decisions and the intent behind them, in a form precise enough to reapply elsewhere. The output is a portable brief: discrete tokens for the machine, plus the qualitative reasoning that tells a future agent *why* those values exist and *when* to use them. Tokens without rationale produce technically-correct-but-soulless reuse; rationale without tokens produces vibes nobody can implement. You need both.
 
-## The one rule that governs everything: replication is not design
+## Pick the source mode
 
-You are reproducing, not designing. Do not "improve" the layout, "modernise" the spacing, "clean up" the hierarchy, swap the font for something nicer, or fill empty states with invented content. If the reference has an awkward 13px gap, you reproduce a 13px gap. The user asked for a copy; deviation — however well-intentioned — is the defect, not the feature. If you catch yourself mentally reframing a choice as "this would look better," stop: that instinct is the signal you are about to introduce drift.
+The user's reference is one of three things. Confirm which, then follow that mode. If the reference is genuinely missing (a prompt implies an image but none is attached), check and ask.
 
-The only exception is information genuinely absent from the reference (a hover state, an error state, content below the fold). Those are *unknowns*, not *improvements* — handle them in Phase 0, not by guessing.
+### Mode A — Image / screenshot
 
-## Why one-shot reproduction never lands (and what to do about it)
+Read the image forensically. This overlaps the analysis discipline in the `ss-replicate` skill — read its `references/analysis-pass.md` if available and apply the same element-by-element rigour. Extract tokens by *inference* from pixels, and explicitly mark confidence: pixel-derived values are estimates, not ground truth. Flag anything a static image cannot reveal (states, motion, responsive behaviour).
 
-When the model reads an image it loses metadata your eye reconstructs for free. A 12px-radius card is just a smooth boundary at the pixel level; nothing in the image says the intended value was 12 rather than 10 or 14. Drift concentrates in five places:
+### Mode B — Live URL / website
 
-- **Font weight** — regular vs medium vs semibold
-- **Spacing grid** — a 4px scale vs an 8px scale
-- **Shadow elevation** — one diffuse blur looks like several
-- **Color tokens** — `#EEEEEE` vs `#F2F2F2`
-- **Icon stroke width** — 1.5px vs 2px
+Fetch the page and inspect the *actual* styling rather than guessing from the rendered look — this is ground truth, not inference, so prefer it strongly over eyeballing.
 
-The model is not failing; it is correctly inferring *continuous* values from pixels, and those values won't land on *discrete* design-system tokens unless you force the choice. So the whole method is: **constrain the model to a discrete scale up front, then verify visually and correct.** Guessing is replaced by choosing; choosing is then checked against the image.
+- Read computed styles, CSS custom properties (`:root { --… }`), and any Tailwind/utility classes present.
+- Pull the real font stack, the actual hex/oklch values, the spacing and radius scales, the shadow definitions.
+- Identify the framework/design-system fingerprint (shadcn/ui, Material, Chakra, Bootstrap, a bespoke system) from class names and structure.
+- Capture interaction styling where reachable (hover/focus rules in CSS).
+- Respect copyright and IP: extract the *system* (tokens, patterns), do not wholesale-copy proprietary content, brand marks, or copy.
 
-## Process
+### Mode C — Existing codebase
 
-Run these phases in order. Do not skip Phase 0 or Phase 3 — they are where fidelity is won.
+Inspect the source of truth directly. Look in this priority order:
 
-### Phase 0 — Intake and follow-up questions (ask before building)
+1. **Token/theme sources** — `tailwind.config.*`, a Tailwind v4 `@theme` block, `theme.ts/js`, CSS custom properties, Style Dictionary / DTCG JSON, Tokens Studio exports, an existing `DESIGN.md`.
+2. **Global styles** — `globals.css`, `app.css`, reset/base layers, font imports.
+3. **Component library** — the primitive components (Button, Input, Card…) and their variant definitions (e.g. `cva`/`tailwind-variants` configs), which encode the real radii, heights, and state styles.
+4. **Usage patterns** — grep for how tokens are actually applied across the app to distinguish defined-but-unused tokens from load-bearing ones.
 
-Confirm an image is actually present (a prompt implying one does not mean one was attached — check). Then resolve the variables that determine fidelity. Ask the user only what you cannot infer; infer the rest and state your assumption inline.
+Report tokens that are *defined* vs tokens that are *actually used* — orphaned tokens are noise and shouldn't be presented as part of the live language.
 
-Ask about:
+## What to extract (every mode)
 
-1. **Target stack.** Framework + styling system (e.g. React + TypeScript + Tailwind + shadcn/ui, plain HTML/CSS, SwiftUI, Flutter). If the user has an established stack, default to it and say so rather than asking.
-2. **Token scale to snap to.** The allowed spacing / radius / type-size / shadow values. If the user has a design system (Untitled UI, shadcn/ui, Fluent 2, an existing `DESIGN.md`, a Tailwind theme), snap to *its* scale — do not invent one. If none exists, propose a sensible discrete scale (spacing 4/8/12/16/24/32, radius 4/8/12/16, type 12/14/16/18/24) and proceed.
-3. **Scope.** The whole screen, one component, or a region. A tight scope produces far higher fidelity than "rebuild everything" — narrow it if the user is vague.
-4. **Unknowns in the reference.** Anything the static image cannot show: interactive states (hover/focus/active/disabled), responsive behaviour, real data vs placeholder, content below the fold, motion. List what you see missing and ask how to handle it — reproduce as static, stub it, or leave it out.
+Capture each of these. For inferred (image) sources, tag confidence; for code/URL sources, cite where the value came from.
 
-Keep this to one focused round. If the user said "just build it," make defensible assumptions, state them, and move on — do not stall.
-
-If the image is low resolution or a 1x capture, note that glyph edges will blur and weight/stroke estimates get shaky; ask for a 2x export or a tighter crop if available. Do not let a poor source silently degrade the result without flagging it.
-
-### Phase 1 — Forensic analysis pass (mandatory, before any code)
-
-Do not write a line of markup until you have read the reference like an inspector, not a viewer. Read `references/analysis-pass.md` for the full element-by-element checklist. Produce a structured inventory covering, at minimum:
-
-- **Layout skeleton** — the box model: outer container, columns/grid, major regions, alignment, what is fixed vs fluid.
-- **Spacing** — gaps and padding, each snapped to the agreed scale (record the snapped value *and* note if it sat awkwardly between two steps).
-- **Typography** — family, size, weight, line-height, letter-spacing, case, color — per distinct text style, not per line.
-- **Color** — every fill, border, and text color as a hex/token, with its role (surface, primary action, secondary text, border).
-- **Shape & elevation** — radii, borders (width + color), shadows (offset/blur/spread/color), described as discrete steps.
-- **Iconography** — icon set if identifiable, stroke width, size.
-- **Components** — name the *primitive* each block maps to in the target system (this is a Button, this is a Card, this is a Tooltip), so you instantiate components rather than hand-drawing pixels. Reproducing via the design system's own primitives is what kills drift on radius, height, and state.
-
-State explicitly anything you could not read with confidence — those are the items you flagged in Phase 0.
-
-### Phase 2 — Build, constrained to the discrete scale
-
-Implement against the inventory, not against the image directly. Hard constraints:
-
-- **Snap every numeric value to an allowed token.** Never emit continuous junk like `padding: 13.5px` or `rounded-[11px]`. If a measurement sits between two steps, pick the nearer one and note it.
-- **Specify exact properties, never `transition: all`.** Reproduce only the transitions visible or specified.
-- **Instantiate components, do not draw them.** Use the target system's Button/Card/Input/etc. so heights, radii, and states inherit correctly.
-- **Reproduce empty/placeholder content verbatim.** Do not invent copy, names, numbers, or avatars beyond what is shown.
-- **Keep structure honest.** Semantic HTML, real layout primitives (fl/grid), no absolute-positioning hacks to fake alignment that the original achieves with flow.
-
-### Phase 3 — Visual self-correction loop (this is where fidelity is actually earned)
-
-A one-shot build is a draft, never the deliverable. Close the gap by *seeing your own output*, not by re-reading the prompt:
-
-1. Render the build (run it, or use the available browser/preview tooling to load it).
-2. Capture a screenshot of the rendered result at the same viewport as the reference.
-3. **Diff against the reference, region by region.** Look specifically at the five drift zones above. Name discrepancies as concrete measurements: "card padding renders ~20px, reference is ~16px"; "heading reads semibold, reference is medium"; "shadow too diffuse — drop one elevation step."
-4. Apply the **smallest possible diff** to fix each named discrepancy. Do not rewrite working structure — changing classes you were not asked to change reintroduces drift. Fix the specific values, nothing else.
-5. Repeat until the diff is down to imperceptible. Treat yourself as a junior engineer under QA: each pass, the bar is "what is still different," not "what could be nicer."
-
-If you cannot render in the current environment, say so, and instead deliver the build plus an explicit self-review against the reference and the Phase 4 checklist — do not pretend a loop happened.
-
-### Phase 4 — Verification checklist
-
-Before presenting, confirm every item. Report any you could not verify.
-
-- [ ] Layout skeleton matches: same regions, same order, same alignment.
-- [ ] Every spacing value snaps to the agreed scale; none invented.
-- [ ] Type styles match family / size / weight / line-height / case per style.
-- [ ] Colors match by token/hex and by *role*.
-- [ ] Radii, borders, and shadow elevation match as discrete steps.
-- [ ] Components are real primitives, not hand-drawn lookalikes.
-- [ ] No invented content, no "improvements," no redesigns.
-- [ ] Unknowns (states, responsive, below-fold) are handled as agreed in Phase 0, not silently guessed.
-- [ ] A visual diff pass was done (or its absence was flagged).
+- **Color system** — every color with hex/oklch, its semantic role (surface, raised surface, primary, secondary, muted text, border, semantic states, focus ring), and relationships (is `primary-hover` a fixed darken of `primary`?).
+- **Typography** — font families and their roles, the full type scale (size/weight/line-height/letter-spacing per named style), and rules (e.g. "display sizes for page titles only").
+- **Spacing & layout** — base unit (4px vs 8px grid), the spacing scale, container widths, grid conventions, breakpoints.
+- **Shape** — radius scale, border conventions, the flat-vs-elevated strategy.
+- **Elevation & depth** — shadow steps with values, or the non-shadow method (borders, contrast) for flat systems.
+- **Motion** — durations, easing curves, what animates and what deliberately doesn't (if observable).
+- **Component patterns** — the recurring primitives and their canonical styling/variants.
+- **Design philosophy** — the qualitative through-line: density (airy vs compact), tone (playful vs institutional), contrast strategy, what the system optimises for. This is the part that prevents generic reuse — name the personality in concrete terms, not adjectives alone ("compact 8px rhythm with 1px hairline borders and near-zero elevation" beats "clean and minimal").
 
 ## Output format
 
-Deliver three parts, always:
+Produce a structured brief with these sections, in this order:
 
-1. **The code** — complete and runnable in the target stack.
-2. **Fidelity rationale** — a short bulleted log of the non-obvious values you chose and why (which spacing step, which weight, which elevation), so a reviewer can audit drift without re-measuring.
-3. **What I could not read from the reference** — the explicit list of unknowns and how each was handled. This is not an apology; it is the surface that lets the user close the last gap fast.
+```
+# Design Language: [source name]
 
-## Anti-patterns (do not do these)
+## Source & confidence
+[What was analysed, which mode, and how reliable the values are —
+inferred from pixels vs read from code/CSS.]
 
-- Building straight from the image with no analysis pass.
-- Emitting continuous values (`12.7px`, arbitrary hex) instead of snapping to tokens.
-- "Improving" spacing, hierarchy, copy, or fonts.
-- Rewriting the whole component to fix a 4px gap.
-- Declaring "pixel-perfect" without a visual diff pass.
-- Inventing hover/error/empty states the user did not ask you to design.
+## Overview / Personality
+[The qualitative through-line in concrete terms.]
+
+## Color
+[Table: token | value | role | notes]
+
+## Typography
+[Families, then a table: style | family | size | weight | line-height | tracking | usage]
+
+## Spacing & Layout
+[Base unit, scale, containers, breakpoints.]
+
+## Shape
+[Radius scale, border conventions, flat-vs-elevated strategy.]
+
+## Elevation & Depth
+[Shadow steps with values, or the flat alternative.]
+
+## Motion
+[Durations, easing, what does/doesn't animate. Omit if unobservable.]
+
+## Component Patterns
+[Per primitive: canonical styling and variants observed.]
+
+## Do's and Don'ts
+[Concrete usage rules that keep reuse faithful and non-generic.]
+```
+
+Keep the brief implementation-ready: a downstream agent (or the `export-designmd` skill) should be able to consume it directly. If the user's end goal is a drop-in `DESIGN.md` for a codebase, hand off to `export-designmd`, which renders this analysis into the official spec format.
+
+## Guardrails
+
+- Distinguish inference from fact. Never present a pixel-estimated hex as if it were read from source.
+- Extract the system, not the content. Tokens and patterns are fair to capture; proprietary copy, imagery, and brand marks are not — flag and placeholder them.
+- Avoid the generic-AI failure mode: do not flatten a distinctive language into the usual "Inter / slate-900 / rounded-lg / shadow-md" defaults unless that is genuinely what the source uses. Name what makes *this* one specific.

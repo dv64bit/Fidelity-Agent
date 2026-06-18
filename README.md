@@ -38,6 +38,7 @@ Or install all four at once:
 ```bash
 npx skills add https://github.com/dv64bit/Fidelity-Agent --skill ss-replicate && \
 npx skills add https://github.com/dv64bit/Fidelity-Agent --skill extract-design-language && \
+npx skills add https://github.com/dv64bit/Fidelity-Agent --skill apply-design-language && \
 npx skills add https://github.com/dv64bit/Fidelity-Agent --skill export-designmd && \
 npx skills add https://github.com/dv64bit/Fidelity-Agent --skill emil-design-eng
 ```
@@ -95,6 +96,26 @@ Applies Emil Kowalski's UI polish philosophy to your component or page: micro-in
 
 ---
 
+### `/apply-design-language` — Restyle an existing app with a new design language
+
+```text
+/apply-design-language
+```
+
+Attach a reference (screenshot, design mock, live URL, or inspiration) and point Claude at your existing codebase. Claude will:
+
+1. Extract the reference's design language (exact hex, fonts, px, spacing, motion)
+2. Inventory your app's current token layer (Tailwind config, CSS variables, theme object)
+3. Build an explicit old → new token map
+4. Apply at the token source first, pilot on one component, then roll out
+5. Verify the app still builds and behaves identically — WCAG AA contrast preserved
+
+**Governing rule:** changes how the app *looks*, never how it *works*. Business logic, state, routing, APIs, and DOM structure are untouched. If a visual goal would require a structural change, Claude surfaces the trade-off instead of silently refactoring behaviour.
+
+**When to use:** Your app already exists and you want it to look like a reference — reskin/retheme the whole thing, not clone one screen.
+
+---
+
 ### `/export-designmd` — Export a `DESIGN.md` from a codebase
 
 ```text
@@ -115,12 +136,14 @@ Generates a spec-compliant `DESIGN.md` (Google Stitch open format) from your exi
 ## How the pieces fit
 
 ```text
-extract-design-language  →  export-designmd   (analyse → emit spec)
-ss-replicate             →  implement-best-practice  (build → polish)
+extract-design-language  →  apply-design-language   (analyse → restyle existing app)
+extract-design-language  →  export-designmd          (analyse → emit spec)
+ss-replicate             →  implement-best-practice  (build new → polish)
 ```
 
-- **Replicate** a reference you can see → `/ss-replicate`
+- **Replicate** a reference into new code → `/ss-replicate`
 - **Understand and capture** a design language from any source → `/extract-design-language`
+- **Restyle** an existing app to match a reference → `/apply-design-language`
 - **Polish** the craft of what you build → `/implement-best-practice`
 - **Export** an existing codebase's system as a portable spec → `/export-designmd`
 
@@ -132,6 +155,7 @@ ss-replicate             →  implement-best-practice  (build → polish)
 | --- | --- | --- |
 | `/ss-replicate` | `ss-replicate` | Replicate a UI from a screenshot or reference image into working code with maximum visual fidelity. |
 | `/extract-design-language` | `extract-design-language` | Extract the complete design language from an image, a live URL, or an existing codebase into a structured, reusable brief. |
+| `/apply-design-language` | `apply-design-language` | Adopt a reference's design language and apply it to an existing codebase — restyle the UI only, never the functionality. |
 | `/implement-best-practice` | `emil-design-eng` | Apply Emil Kowalski's design-engineering philosophy — UI polish, animation decisions, interaction craft. |
 | `/export-designmd` | `export-designmd` | Generate a spec-compliant `DESIGN.md` from a codebase (Google Stitch open format). |
 

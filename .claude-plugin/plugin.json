@@ -1,0 +1,18 @@
+{
+  "name": "fidelity",
+  "version": "1.0.0",
+  "description": "A design-engineering agent for high-fidelity UI work: pixel-faithful replication from screenshots, design-language extraction from any source, design-engineering best practices, and spec-compliant DESIGN.md export.",
+  "author": {
+    "name": "Darshan"
+  },
+  "keywords": [
+    "ui",
+    "design-engineering",
+    "design-system",
+    "screenshot-to-code",
+    "design-tokens",
+    "design-md"
+  ],
+  "commands": "./commands",
+  "skills": "./skills"
+}

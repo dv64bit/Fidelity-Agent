@@ -1,5 +1,5 @@
 ---
-name: extract-design-language
+name: ss-replicate
 description: Extract the complete design language from a reference — a screenshot/image, a live URL/website, or an existing codebase — into a structured, reusable design-language brief (tokens + patterns + rationale). Use whenever the user wants to "extract the design language", "capture the design system", "reverse-engineer this UI's styling", "figure out the tokens behind this", "document how this looks", or analyse what makes a reference look the way it does, from any source. Triggers on the /extract-design-language command and on any request to derive design intent, tokens, or patterns from an image, site, or code. Use this when the goal is to UNDERSTAND and capture a design language for reuse; if the goal is specifically to emit a spec-compliant DESIGN.md file from a codebase, use export-designmd instead (it builds on this analysis).
 ---
 

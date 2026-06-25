@@ -20,7 +20,7 @@ Then add it to your Claude Code config (`~/.claude/settings.json`):
 }
 ```
 
-Restart Claude Code. All four commands (`/ss-replicate`, `/extract-design-language`, `/implement-best-practice`, `/export-designmd`) are available immediately.
+Restart Claude Code. All five commands (`/ss-replicate`, `/extract-design-language`, `/implement-best-practice`, `/export-designmd`, `/implement-designmd`) are available immediately.
 
 ### Option 2 — Install individual skills via CLI
 
@@ -33,13 +33,14 @@ npx skills add https://github.com/dv64bit/Fidelity-Agent --skill export-designmd
 npx skills add https://github.com/dv64bit/Fidelity-Agent --skill emil-design-eng
 ```
 
-Or install all four at once:
+Or install all at once:
 
 ```bash
 npx skills add https://github.com/dv64bit/Fidelity-Agent --skill ss-replicate && \
 npx skills add https://github.com/dv64bit/Fidelity-Agent --skill extract-design-language && \
 npx skills add https://github.com/dv64bit/Fidelity-Agent --skill apply-design-language && \
 npx skills add https://github.com/dv64bit/Fidelity-Agent --skill export-designmd && \
+npx skills add https://github.com/dv64bit/Fidelity-Agent --skill implement-designmd && \
 npx skills add https://github.com/dv64bit/Fidelity-Agent --skill emil-design-eng
 ```
 
@@ -116,6 +117,26 @@ Attach a reference (screenshot, design mock, live URL, or inspiration) and point
 
 ---
 
+### `/implement-designmd` — Implement a `DESIGN.md` into a codebase with zero drift
+
+```text
+/implement-designmd
+```
+
+Takes an existing `DESIGN.md` (or any DESIGN.md-style token spec) and makes the codebase conform to it **exactly** — then proves it with a token-by-token conformance audit.
+
+1. Parses the full spec: YAML frontmatter tokens (resolves every `{path.to.token}` reference, flags broken or circular refs) and prose usage rules. Builds a flat conformance table as the source of truth.
+2. Translates the table 1:1 into the codebase's token format (CSS variables / Tailwind `@theme` or config / theme object / shadcn variables) — no rounding, no interpretation. Creates a token architecture if none exists.
+3. Scans for hardcoded/arbitrary values that bypass tokens. Replaces exact matches; **flags near-misses instead of silently snapping them.**
+4. Re-extracts implemented values, diffs token-by-token against the spec (on-spec / missing / mismatch / overridden / orphaned), scores it, fixes every discrepancy, and re-audits until **100% on-spec with zero overrides.**
+5. Offers a lint rule, a `DESIGN.md` pointer in `CLAUDE.md`/`AGENTS.md`, and an optional CI conformance gate to prevent future drift.
+
+**Governing rule:** changes how the app *looks*, never how it *works*. This is the return leg of `/export-designmd` — export produces the spec; this implements it.
+
+**When to use:** You have a `DESIGN.md` and want it applied faithfully — not approximated. The defining feature vs `/apply-design-language` is the conformance audit: the result is verified, not just attempted.
+
+---
+
 ### `/export-designmd` — Export a `DESIGN.md` from a codebase
 
 ```text
@@ -138,6 +159,7 @@ Generates a spec-compliant `DESIGN.md` (Google Stitch open format) from your exi
 ```text
 extract-design-language  →  apply-design-language   (analyse → restyle existing app)
 extract-design-language  →  export-designmd          (analyse → emit spec)
+export-designmd          →  implement-designmd       (emit spec → implement faithfully)
 ss-replicate             →  implement-best-practice  (build new → polish)
 ```
 
@@ -146,6 +168,7 @@ ss-replicate             →  implement-best-practice  (build new → polish)
 - **Restyle** an existing app to match a reference → `/apply-design-language`
 - **Polish** the craft of what you build → `/implement-best-practice`
 - **Export** an existing codebase's system as a portable spec → `/export-designmd`
+- **Implement** a `DESIGN.md` spec into a codebase with verified zero drift → `/implement-designmd`
 
 ---
 
@@ -158,6 +181,7 @@ ss-replicate             →  implement-best-practice  (build new → polish)
 | `/apply-design-language` | `apply-design-language` | Adopt a reference's design language and apply it to an existing codebase — restyle the UI only, never the functionality. |
 | `/implement-best-practice` | `emil-design-eng` | Apply Emil Kowalski's design-engineering philosophy — UI polish, animation decisions, interaction craft. |
 | `/export-designmd` | `export-designmd` | Generate a spec-compliant `DESIGN.md` from a codebase (Google Stitch open format). |
+| `/implement-designmd` | `implement-designmd` | Implement an existing `DESIGN.md` into a codebase with token-by-token conformance audit — verified zero drift. |
 
 ---
 
@@ -167,6 +191,7 @@ The skills are grounded in current sources, not training-data assumptions:
 
 - **ss-replicate** — discrete-token-constraint method, image-prep practices, three-part output (including "what I couldn't read"), smallest-diff iteration, and visual self-correction loop. Reflects current screenshot-to-UI accuracy practice (2026).
 - **export-designmd** — built on the open **DESIGN.md** spec introduced by Google Stitch (announced March 2026, open-sourced April 2026): YAML token frontmatter + Markdown rationale, eight canonical sections, eight linter rules, `{path.to.token}` references, CSS / Tailwind `@theme` / W3C DTCG-JSON exports.
+- **implement-designmd** — the return leg of `export-designmd`. Structured around the three root causes of implementation drift (no normative source, hardcoded overrides, no verification pass) and a token-by-token conformance audit loop that must reach 100% before declaring done.
 - **implement-best-practice** — Emil Kowalski's `emil-design-eng` skill, bundled verbatim, installable via `vercel-labs/skills` (`npx skills add owner/repo --skill name`).
 
 ## Design intent

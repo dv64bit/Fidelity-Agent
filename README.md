@@ -29,7 +29,9 @@ Pick only the skills you need:
 ```bash
 npx skills add https://github.com/dv64bit/Fidelity-Agent --skill ss-replicate
 npx skills add https://github.com/dv64bit/Fidelity-Agent --skill extract-design-language
+npx skills add https://github.com/dv64bit/Fidelity-Agent --skill apply-design-language
 npx skills add https://github.com/dv64bit/Fidelity-Agent --skill export-designmd
+npx skills add https://github.com/dv64bit/Fidelity-Agent --skill implement-designmd
 npx skills add https://github.com/dv64bit/Fidelity-Agent --skill emil-design-eng
 ```
 
